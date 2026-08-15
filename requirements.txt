@@ -1,0 +1,8 @@
+openai
+google-cloud-bigquery
+google-auth
+python-dotenv
+pandas
+streamlit
+db-dtypes
+reportlab
