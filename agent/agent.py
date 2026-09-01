@@ -25,14 +25,42 @@ from tools.rca_tools import (
 
 load_dotenv()
 
-api_key = os.getenv("OPENAI_API_KEY")
+
+def get_openai_api_key():
+    """
+    OpenAI API Key를 가져옵니다.
+
+    - Streamlit Cloud:
+      st.secrets["OPENAI_API_KEY"] 사용
+
+    - 로컬 환경:
+      .env의 OPENAI_API_KEY 사용
+    """
+
+    # Streamlit Cloud
+    try:
+        import streamlit as st
+
+        if "OPENAI_API_KEY" in st.secrets:
+            return st.secrets["OPENAI_API_KEY"]
+
+    except Exception:
+        pass
+
+    # 로컬 .env
+    return os.getenv("OPENAI_API_KEY")
+
+
+api_key = get_openai_api_key()
 
 if not api_key:
     raise ValueError(
-        "OPENAI_API_KEY가 .env 파일에 설정되어 있지 않습니다."
+        "OPENAI_API_KEY가 설정되어 있지 않습니다."
     )
 
-client = OpenAI(api_key=api_key)
+client = OpenAI(
+    api_key=api_key
+)
 
 
 # --------------------------------------------------
