@@ -4,5 +4,6 @@ google-auth
 python-dotenv
 pandas
 streamlit
+altair
 db-dtypes
 reportlab
