@@ -1,4 +1,5 @@
 from google.cloud import bigquery
+from google.oauth2 import service_account
 
 
 PROJECT_ID = "silken-setting-502904-m2"
@@ -7,8 +8,39 @@ PROJECT_ID = "silken-setting-502904-m2"
 def get_bigquery_client():
     """
     BigQuery 클라이언트를 생성합니다.
-    로컬에서는 gcloud ADC 인증 정보를 자동으로 사용합니다.
+
+    - Streamlit Cloud:
+      st.secrets["gcp_service_account"]의 서비스 계정 인증 사용
+
+    - 로컬 환경:
+      기존 Google Application Default Credentials(ADC) 사용
     """
+
+    # Streamlit Cloud 서비스 계정 인증 시도
+    try:
+        import streamlit as st
+
+        if "gcp_service_account" in st.secrets:
+            service_account_info = dict(
+                st.secrets["gcp_service_account"]
+            )
+
+            credentials = (
+                service_account.Credentials.from_service_account_info(
+                    service_account_info
+                )
+            )
+
+            return bigquery.Client(
+                project=PROJECT_ID,
+                credentials=credentials,
+            )
+
+    except Exception:
+        # 로컬 실행 시 st.secrets가 없어도 ADC로 실행
+        pass
+
+    # 로컬 환경: gcloud ADC 인증
     return bigquery.Client(project=PROJECT_ID)
 
 
@@ -16,6 +48,7 @@ def test_connection():
     """
     BigQuery 연결 테스트
     """
+
     client = get_bigquery_client()
 
     query = """
@@ -69,14 +102,14 @@ def get_anomaly_by_date(target_date):
             bigquery.ScalarQueryParameter(
                 "target_date",
                 "DATE",
-                target_date
+                target_date,
             )
         ]
     )
 
     result = client.query(
         query,
-        job_config=job_config
+        job_config=job_config,
     ).to_dataframe()
 
     return result
