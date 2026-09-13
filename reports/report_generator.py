@@ -118,25 +118,25 @@ def register_korean_font():
         return
 
     # 2) Streamlit Cloud / Linux
-    regular_cid_font = "HYSMyeongJo-Medium"
-    bold_cid_font = "HYGothic-Medium"
+    # ReportLab 내장 한국어 고딕 CID 폰트를 사용합니다.
+    # 별도 폰트 파일 없이 Cloud에서도 한글이 안정적으로 출력됩니다.
+    cid_font = "HYGothic-Medium"
 
     try:
-        pdfmetrics.getFont(regular_cid_font)
+        pdfmetrics.getFont(
+            cid_font
+        )
     except KeyError:
         pdfmetrics.registerFont(
-            UnicodeCIDFont(regular_cid_font)
+            UnicodeCIDFont(
+                cid_font
+            )
         )
 
-    try:
-        pdfmetrics.getFont(bold_cid_font)
-    except KeyError:
-        pdfmetrics.registerFont(
-            UnicodeCIDFont(bold_cid_font)
-        )
-
-    FONT_NAME = regular_cid_font
-    FONT_BOLD_NAME = bold_cid_font
+    # Cloud의 내장 CID 폰트에는 별도 Bold face가 없으므로
+    # 동일 폰트를 사용하고 제목/헤더는 크기·색상·간격으로 계층을 구분합니다.
+    FONT_NAME = cid_font
+    FONT_BOLD_NAME = cid_font
 
 
 # ==================================================
@@ -181,8 +181,8 @@ def build_styles():
             "SectionHeading",
             parent=styles["Heading2"],
             fontName=FONT_BOLD_NAME,
-            fontSize=13.5,
-            leading=17,
+            fontSize=14,
+            leading=17.5,
             textColor=colors.HexColor(
                 "#111827"
             ),
@@ -194,8 +194,8 @@ def build_styles():
             "SubHeading",
             parent=styles["Heading3"],
             fontName=FONT_BOLD_NAME,
-            fontSize=10,
-            leading=14,
+            fontSize=10.3,
+            leading=14.2,
             textColor=colors.HexColor(
                 "#374151"
             ),
@@ -230,7 +230,7 @@ def build_styles():
             "TableHeader",
             parent=styles["BodyText"],
             fontName=FONT_BOLD_NAME,
-            fontSize=8,
+            fontSize=8.2,
             leading=11,
             alignment=TA_CENTER,
             textColor=colors.white,
@@ -252,8 +252,8 @@ def build_styles():
             "HighlightTitle",
             parent=styles["BodyText"],
             fontName=FONT_BOLD_NAME,
-            fontSize=9.5,
-            leading=13,
+            fontSize=9.8,
+            leading=13.2,
             textColor=colors.HexColor(
                 "#1D4ED8"
             ),
