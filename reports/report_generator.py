@@ -2,6 +2,7 @@ from io import BytesIO
 import os
 import re
 import html
+import glob
 
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER
@@ -13,7 +14,6 @@ from reportlab.lib.styles import (
 from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 from reportlab.platypus import (
     SimpleDocTemplate,
     Paragraph,
@@ -45,98 +45,125 @@ FONT_NAME = "KoreanFont"
 FONT_BOLD_NAME = "KoreanFontBold"
 
 
+def _find_first_existing(candidates):
+    for path in candidates:
+        if path and os.path.exists(path):
+            return path
+    return None
+
+
+def _find_linux_font(patterns):
+    for pattern in patterns:
+        matches = glob.glob(
+            pattern,
+            recursive=True,
+        )
+        if matches:
+            return matches[0]
+    return None
+
+
 def register_korean_font():
     """
-    한글 PDF 폰트를 등록합니다.
+    PDF 한글 폰트를 등록합니다.
 
-    - Windows 로컬: 맑은 고딕
-    - Streamlit Cloud / Linux: ReportLab 내장 한국어 CID 폰트
+    - Windows 로컬:
+      맑은 고딕 Regular / Bold 사용
+
+    - Streamlit Cloud / Linux:
+      packages.txt로 설치한 나눔고딕 Regular / Bold 사용
+
+    실제 Regular/Bold TTF를 각각 등록하므로
+    제목, 섹션 제목, 표 헤더의 굵기 차이가 정상적으로 표현됩니다.
     """
 
-    global FONT_NAME, FONT_BOLD_NAME
-
-    regular_candidates = [
-        r"C:\Windows\Fonts\malgun.ttf",
-        r"C:\Windows\Fonts\malgunsl.ttf",
-    ]
-
-    bold_candidates = [
-        r"C:\Windows\Fonts\malgunbd.ttf",
-        r"C:\Windows\Fonts\malgun.ttf",
-    ]
-
-    regular_path = next(
-        (
-            path
-            for path in regular_candidates
-            if os.path.exists(path)
-        ),
-        None,
+    # ----------------------------------------------
+    # Windows
+    # ----------------------------------------------
+    regular_path = _find_first_existing(
+        [
+            r"C:\Windows\Fonts\malgun.ttf",
+            r"C:\Windows\Fonts\malgunsl.ttf",
+        ]
     )
 
-    bold_path = next(
-        (
-            path
-            for path in bold_candidates
-            if os.path.exists(path)
-        ),
-        None,
+    bold_path = _find_first_existing(
+        [
+            r"C:\Windows\Fonts\malgunbd.ttf",
+            r"C:\Windows\Fonts\malgun.ttf",
+        ]
     )
 
-    # 1) Windows 로컬
-    if regular_path:
+    # ----------------------------------------------
+    # Streamlit Cloud / Linux
+    # ----------------------------------------------
+    if not regular_path:
+        regular_path = _find_linux_font(
+            [
+                "/usr/share/fonts/**/NanumGothic.ttf",
+                "/usr/share/fonts/**/NanumGothic-Regular.ttf",
+                "/usr/local/share/fonts/**/NanumGothic.ttf",
+            ]
+        )
 
-        if not bold_path:
-            bold_path = regular_path
+    if not bold_path:
+        bold_path = _find_linux_font(
+            [
+                "/usr/share/fonts/**/NanumGothicBold.ttf",
+                "/usr/share/fonts/**/NanumGothic-Bold.ttf",
+                "/usr/local/share/fonts/**/NanumGothicBold.ttf",
+            ]
+        )
 
-        try:
-            pdfmetrics.getFont(
-                "KoreanFont"
-            )
-        except KeyError:
-            pdfmetrics.registerFont(
-                TTFont(
-                    "KoreanFont",
-                    regular_path,
-                )
-            )
+    if not regular_path:
+        raise FileNotFoundError(
+            "PDF용 한글 고딕 폰트를 찾지 못했습니다. "
+            "Streamlit Cloud에서는 프로젝트 루트의 packages.txt에 "
+            "'fonts-nanum'이 포함되어 있는지 확인해주세요."
+        )
 
-        try:
-            pdfmetrics.getFont(
-                "KoreanFontBold"
-            )
-        except KeyError:
-            pdfmetrics.registerFont(
-                TTFont(
-                    "KoreanFontBold",
-                    bold_path,
-                )
-            )
+    if not bold_path:
+        raise FileNotFoundError(
+            "PDF용 한글 Bold 폰트를 찾지 못했습니다. "
+            "Streamlit Cloud에서는 packages.txt의 'fonts-nanum' 설치 여부를 "
+            "확인해주세요."
+        )
 
-        FONT_NAME = "KoreanFont"
-        FONT_BOLD_NAME = "KoreanFontBold"
-        return
-
-    # 2) Streamlit Cloud / Linux
-    # ReportLab 내장 한국어 고딕 CID 폰트를 사용합니다.
-    # 별도 폰트 파일 없이 Cloud에서도 한글이 안정적으로 출력됩니다.
-    cid_font = "HYGothic-Medium"
-
+    # ----------------------------------------------
+    # 실제 Regular / Bold TTF 등록
+    # ----------------------------------------------
     try:
         pdfmetrics.getFont(
-            cid_font
+            FONT_NAME
         )
     except KeyError:
         pdfmetrics.registerFont(
-            UnicodeCIDFont(
-                cid_font
+            TTFont(
+                FONT_NAME,
+                regular_path,
             )
         )
 
-    # Cloud의 내장 CID 폰트에는 별도 Bold face가 없으므로
-    # 동일 폰트를 사용하고 제목/헤더는 크기·색상·간격으로 계층을 구분합니다.
-    FONT_NAME = cid_font
-    FONT_BOLD_NAME = cid_font
+    try:
+        pdfmetrics.getFont(
+            FONT_BOLD_NAME
+        )
+    except KeyError:
+        pdfmetrics.registerFont(
+            TTFont(
+                FONT_BOLD_NAME,
+                bold_path,
+            )
+        )
+
+    # <b> 태그가 실제 Bold 폰트로 전환되도록 family mapping 등록
+    pdfmetrics.registerFontFamily(
+        "KoreanFont",
+        normal=FONT_NAME,
+        bold=FONT_BOLD_NAME,
+        italic=FONT_NAME,
+        boldItalic=FONT_BOLD_NAME,
+    )
 
 
 # ==================================================
@@ -194,8 +221,8 @@ def build_styles():
             "SubHeading",
             parent=styles["Heading3"],
             fontName=FONT_BOLD_NAME,
-            fontSize=10.3,
-            leading=14.2,
+            fontSize=10.5,
+            leading=14.5,
             textColor=colors.HexColor(
                 "#374151"
             ),
@@ -252,8 +279,8 @@ def build_styles():
             "HighlightTitle",
             parent=styles["BodyText"],
             fontName=FONT_BOLD_NAME,
-            fontSize=9.8,
-            leading=13.2,
+            fontSize=10,
+            leading=13.5,
             textColor=colors.HexColor(
                 "#1D4ED8"
             ),
