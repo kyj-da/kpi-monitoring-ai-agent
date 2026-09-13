@@ -118,33 +118,21 @@ def register_korean_font():
         return
 
     # 2) Streamlit Cloud / Linux
-    regular_cid_font = "HYSMyeongJo-Medium"
-    bold_cid_font = "HYGoThic-Medium"
+    cid_font = "HYSMyeongJo-Medium"
 
     try:
         pdfmetrics.getFont(
-            regular_cid_font
+            cid_font
         )
     except KeyError:
         pdfmetrics.registerFont(
             UnicodeCIDFont(
-                regular_cid_font
+                cid_font
             )
         )
 
-    try:
-        pdfmetrics.getFont(
-            bold_cid_font
-        )
-    except KeyError:
-        pdfmetrics.registerFont(
-            UnicodeCIDFont(
-                bold_cid_font
-            )
-        )
-
-    FONT_NAME = regular_cid_font
-    FONT_BOLD_NAME = bold_cid_font
+    FONT_NAME = cid_font
+    FONT_BOLD_NAME = cid_font
 
 
 # ==================================================
