@@ -13,6 +13,7 @@ from reportlab.lib.styles import (
 from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 from reportlab.platypus import (
     SimpleDocTemplate,
     Paragraph,
@@ -45,6 +46,14 @@ FONT_BOLD_NAME = "KoreanFontBold"
 
 
 def register_korean_font():
+    """
+    한글 PDF 폰트를 등록합니다.
+
+    - Windows 로컬: 맑은 고딕
+    - Streamlit Cloud / Linux: ReportLab 내장 한국어 CID 폰트
+    """
+
+    global FONT_NAME, FONT_BOLD_NAME
 
     regular_candidates = [
         r"C:\Windows\Fonts\malgun.ttf",
@@ -56,56 +65,86 @@ def register_korean_font():
         r"C:\Windows\Fonts\malgun.ttf",
     ]
 
-    regular_path = None
-    bold_path = None
+    regular_path = next(
+        (
+            path
+            for path in regular_candidates
+            if os.path.exists(path)
+        ),
+        None,
+    )
 
-    for path in regular_candidates:
+    bold_path = next(
+        (
+            path
+            for path in bold_candidates
+            if os.path.exists(path)
+        ),
+        None,
+    )
 
-        if os.path.exists(path):
-            regular_path = path
-            break
+    # 1) Windows 로컬
+    if regular_path:
 
-    for path in bold_candidates:
+        if not bold_path:
+            bold_path = regular_path
 
-        if os.path.exists(path):
-            bold_path = path
-            break
+        try:
+            pdfmetrics.getFont(
+                "KoreanFont"
+            )
+        except KeyError:
+            pdfmetrics.registerFont(
+                TTFont(
+                    "KoreanFont",
+                    regular_path,
+                )
+            )
 
-    if not regular_path:
+        try:
+            pdfmetrics.getFont(
+                "KoreanFontBold"
+            )
+        except KeyError:
+            pdfmetrics.registerFont(
+                TTFont(
+                    "KoreanFontBold",
+                    bold_path,
+                )
+            )
 
-        raise FileNotFoundError(
-            "PDF 생성을 위한 한글 폰트를 찾지 못했습니다. "
-            "Windows의 맑은 고딕 폰트를 확인해주세요."
-        )
+        FONT_NAME = "KoreanFont"
+        FONT_BOLD_NAME = "KoreanFontBold"
+        return
 
-    if not bold_path:
-        bold_path = regular_path
+    # 2) Streamlit Cloud / Linux
+    regular_cid_font = "HYSMyeongJo-Medium"
+    bold_cid_font = "HYGoThic-Medium"
 
     try:
         pdfmetrics.getFont(
-            FONT_NAME
+            regular_cid_font
         )
-
     except KeyError:
         pdfmetrics.registerFont(
-            TTFont(
-                FONT_NAME,
-                regular_path,
+            UnicodeCIDFont(
+                regular_cid_font
             )
         )
 
     try:
         pdfmetrics.getFont(
-            FONT_BOLD_NAME
+            bold_cid_font
         )
-
     except KeyError:
         pdfmetrics.registerFont(
-            TTFont(
-                FONT_BOLD_NAME,
-                bold_path,
+            UnicodeCIDFont(
+                bold_cid_font
             )
         )
+
+    FONT_NAME = regular_cid_font
+    FONT_BOLD_NAME = bold_cid_font
 
 
 # ==================================================
